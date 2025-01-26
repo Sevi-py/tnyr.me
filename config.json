@@ -1,0 +1,19 @@
+{
+    "environment": {
+        "salt1_var": "SALT1",
+        "salt2_var": "SALT2"
+    },
+    "argon2": {
+        "time_cost": 3,
+        "memory_cost": 65536,
+        "parallelism": 4,
+        "hash_length": 32
+    },
+    "database": {
+        "path": "urls.db"
+    },
+    "id_generation": {
+        "length": 10,
+        "allowed_chars": "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ123456789"
+    }
+}
