@@ -8,13 +8,12 @@ from argon2.low_level import hash_secret_raw, Type
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.backends import default_backend
-import re
 
 # Load configuration
 with open('config.json') as f:
     config = json.load(f)
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='dist', static_url_path='/static')
 
 # Validate and load salts
 salt1_hex = os.environ[config['environment']['salt1_var']]
@@ -111,6 +110,9 @@ def shorten_url():
     id = None
     url = data['url']
 
+    if not (url.startswith('https://') or url.startswith('http://') or url.startswith('magnet:')):
+        url = 'http://' + url
+
     with get_db() as conn:
         # Generate unique ID and hash
         for _ in range(100):  # Retry limit
@@ -175,6 +177,17 @@ def redirect_url(id):
         return jsonify({"error": "Decryption failed"}), 500
     
     return redirect(url, code=302)
+
+@app.route('/')
+def serve_react_app():
+    return app.send_static_file('index.html')
+
+@app.route('/<path:path>')
+def serve_static_files(path):
+    return app.send_static_file(path)
+
+# Configure Flask to serve the React app's static files
+#app = Flask(__name__, )
 
 if __name__ == '__main__':
     init_db()
