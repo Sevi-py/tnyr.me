@@ -134,7 +134,6 @@ def shorten_url():
         
         # Derive encryption key
         encryption_key = derive_key(id_bytes, SALT2)
-        print(f"Encryption key length: {len(encryption_key)} bytes")  # Debug
         
         # Encrypt URL
         iv, encrypted_url = encrypt_url(encryption_key, url)
@@ -168,7 +167,6 @@ def redirect_url(id):
     
     # Derive decryption key
     decryption_key = derive_key(id_bytes, SALT2)
-    print(f"Decryption key length: {len(decryption_key)} bytes")  # Debug
     
     # Decrypt URL
     try:

@@ -1,0 +1,5 @@
+argon2-cffi==23.1.0
+argon2-cffi-bindings==21.2.0
+cryptography==36.0.2
+Flask==2.0.3
+gunicorn
