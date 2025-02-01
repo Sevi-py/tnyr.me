@@ -16,8 +16,8 @@ with open('config.json') as f:
 app = Flask(__name__, static_folder='dist', static_url_path='/static')
 
 # Validate and load salts
-salt1_hex = os.environ[config['environment']['salt1_var']]
-salt2_hex = os.environ[config['environment']['salt2_var']]
+salt1_hex = config['salts']['salt1_var']
+salt2_hex = config['salts']['salt2_var']
 
 # Validate and convert salts
 try:
