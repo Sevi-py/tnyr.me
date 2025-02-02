@@ -2,7 +2,7 @@ import { useState } from 'react';
 import axios from 'axios';
 import { Input } from './components/ui/input';
 import { Button } from './components/ui/button';
-import { Lock, Copy, Github } from 'lucide-react';
+import { Shield, Key, Hash, Lock, Copy, EyeOff, Github } from 'lucide-react';
 import { SiBuymeacoffee } from '@icons-pack/react-simple-icons';
 
 export default function App() {
@@ -104,6 +104,77 @@ export default function App() {
               </Button>
             </div>
           )}
+        </div>
+      </div>
+      
+      <div className="w-full max-w-3xl mt-12 mb-8">
+        <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 shadow-xl border border-slate-700/30">
+          <h2 className="text-2xl font-semibold mb-6 flex items-center gap-2">
+            <Lock className="w-6 h-6 text-indigo-400" />
+            How We Protect Your Privacy
+          </h2>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="space-y-4">
+              <div className="flex gap-3">
+                <div className="mt-1">
+                  <Shield className="w-5 h-5 text-indigo-400" />
+                </div>
+                <div>
+                  <h3 className="font-medium mb-1">Zero-Knowledge Encryption</h3>
+                  <p className="text-slate-400 text-sm">
+                    Your URL is encrypted using AES-256 with a key derived from your unique link ID. 
+                    Not even we can decrypt or view your original URL.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <div className="mt-1">
+                  <Key className="w-5 h-5 text-indigo-400" />
+                </div>
+                <div>
+                  <h3 className="font-medium mb-1">Secure Storage</h3>
+                  <p className="text-slate-400 text-sm">
+                    We generate two separate hashes - one for identification and another for encrypting the destination. Without the exact ID, the link is completely inaccessible.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex gap-3">
+                <div className="mt-1">
+                  <Hash className="w-5 h-5 text-indigo-400" />
+                </div>
+                <div>
+                  <h3 className="font-medium mb-1">Complete Anonymity</h3>
+                  <p className="text-slate-400 text-sm">
+                    There's no way to discover or list existing links. Each URL exists 
+                    only for those who possess the unique ID.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <div className="mt-1">
+                  <EyeOff className="w-5 h-5 text-indigo-400" />
+                </div>
+                <div>
+                  <h3 className="font-medium mb-1">Security Process</h3>
+                  <p className="text-slate-400 text-sm">
+                    We never log IP addresses, track users, or use cookies. Each request is completely anonymous - your browsing activity leaves no trace in our systems.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 p-4 bg-slate-700/30 rounded-lg border border-slate-700/50">
+            <p className="text-sm text-slate-400">
+              🔒 <span className="font-medium">Important:</span> Make sure to Bookmark your tnyr.me links safely - there's no way to recover lost IDs or access links without them.
+            </p>
+          </div>
         </div>
       </div>
 
