@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Input } from './components/ui/input';
 import { Button } from './components/ui/button';
 import { Lock, Copy, Github } from 'lucide-react';
+import { SiBuymeacoffee } from '@icons-pack/react-simple-icons';
 
 export default function App() {
   const [url, setUrl] = useState('');
@@ -108,12 +109,20 @@ export default function App() {
 
       <footer className="fixed bottom-4 flex items-center gap-2 text-slate-400">
         <a
-          href="https://github.com/Sevi-py/tnyr.me" // Replace with your GitHub URL
+          href="https://github.com/Sevi-py/tnyr.me"
           target="_blank"
           rel="noopener noreferrer"
           className="hover:text-slate-300 transition-colors"
         >
           <Github className="w-6 h-6" />
+        </a>
+        <a
+          href="https://www.buymeacoffee.com/severin.hilbert"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:text-slate-300 transition-colors"
+        >
+        <SiBuymeacoffee className="w-6 h-6" />
         </a>
       </footer>
     </div>
