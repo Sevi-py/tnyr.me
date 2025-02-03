@@ -1,7 +1,7 @@
 
 
 <div align="center">
-<img src="logo.png" />
+<img src="logo-500px.png" />
 <h1>tnyr.me - Privacy-First URL Shortener</h1>
 </div>
 
@@ -38,29 +38,31 @@ A secure, self-hosted URL shortener with end-to-end encryption. Perfect for priv
 
 ### Quick Start
 1. **Clone Repository**
-   `
+   ```bash
    git clone https://github.com/sevi-py/tnyr.me.git
    cd tnyr/backend
-   `
+   ```
 
 2. **Install Dependencies**
-   `
+   ```bash
    pip install -r requirements.txt
-   `
+   ```
 
 3. **Start Server**
-   `
+   ```bash
    python main.py
-   `
+   ```
 
 4. Access at `http://localhost:5000`
 
 ## Frontend Development
 The backend serves pre-built frontend files. To modify the frontend:
 
-`cd frontend`
-`npm install`
-`npm run build`
+```bash
+cd frontend
+npm install
+npm run build
+```
 
 ## Why Choose tnyr.me?
 
