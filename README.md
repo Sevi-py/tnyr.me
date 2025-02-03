@@ -1,6 +1,6 @@
 <div align="center">
 <img src="logo-256px-no-padding.png" />
-<h1> https://tnyr.me - Privacy-First URL Shortener</h1>
+<h1> [tnyr.me](https://tnyr.me) - Privacy-First URL Shortener</h1>
 </div>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
