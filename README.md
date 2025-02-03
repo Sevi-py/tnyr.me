@@ -1,7 +1,5 @@
-
-
 <div align="center">
-<img src="logo-500px.png" />
+<img src="logo-256px-no-padding.png" />
 <h1>tnyr.me - Privacy-First URL Shortener</h1>
 </div>
 
