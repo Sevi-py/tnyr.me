@@ -178,14 +178,14 @@ export default function App() {
         </div>
       </div>
 
-      <footer className="fixed bottom-4 flex items-center gap-2 text-slate-400">
+      <footer className="bottom-4 flex items-center gap-3 text-slate-400">
         <a
           href="https://github.com/Sevi-py/tnyr.me"
           target="_blank"
           rel="noopener noreferrer"
           className="hover:text-slate-300 transition-colors"
         >
-          <Github className="w-6 h-6" />
+          <Github className="w-8 h-8" />
         </a>
         <a
           href="https://www.buymeacoffee.com/severin.hilbert"
@@ -193,7 +193,7 @@ export default function App() {
           rel="noopener noreferrer"
           className="hover:text-slate-300 transition-colors"
         >
-        <SiBuymeacoffee className="w-6 h-6" />
+        <SiBuymeacoffee className="w-8 h-8" />
         </a>
       </footer>
     </div>
