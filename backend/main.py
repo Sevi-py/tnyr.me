@@ -180,6 +180,14 @@ def redirect_url(id):
 def serve_react_app():
     return app.send_static_file('index.html')
 
+@app.route("/robots.txt")
+def serve_robots_txt():
+    return app.send_static_file("meta/robots.txt")
+
+@app.route("/sitemap.xml")
+def serve_sitemap_xml():
+    return app.send_static_file("meta/sitemap.xml")
+
 @app.route('/<path:path>')
 def serve_static_files(path):
     return app.send_static_file(path)
