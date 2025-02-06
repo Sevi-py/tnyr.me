@@ -46,12 +46,17 @@ A secure, self-hosted URL shortener with end-to-end encryption. Perfect for priv
    pip install -r requirements.txt
    ```
 
-3. **Start Server**
+3. **Configuration**
+   Rename `config_template.json` to `config.json`
+   Generate salts using `python generate_salts.py`
+   Replace the placeholders with the salts you generated
+
+4. **Start Server**
    ```bash
    python main.py
    ```
 
-4. Access at `http://localhost:5000`
+5. Access at `http://localhost:5000`
 
 ## Frontend Development
 The backend serves pre-built frontend files. To modify the frontend:
