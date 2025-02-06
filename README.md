@@ -47,9 +47,9 @@ A secure, self-hosted URL shortener with end-to-end encryption. Perfect for priv
    ```
 
 3. **Configuration**
-   Rename `config_template.json` to `config.json`
-   Generate salts using `python generate_salts.py`
-   Replace the placeholders with the salts you generated
+   - Rename `config_template.json` to `config.json`
+   - Generate salts using `python generate_salts.py`
+   - Replace the placeholders with the salts you generated
 
 4. **Start Server**
    ```bash
