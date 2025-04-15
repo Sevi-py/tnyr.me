@@ -21,10 +21,11 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
         {value && (
           <button
             type="button"
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-white p-1 rounded-md hover:bg-slate-600 transition-colors"
+            style={{ backgroundColor: 'rgba(38, 50, 70, 1)' }}
             onClick={() => onChange?.({ target: { value: "" } } as React.ChangeEvent<HTMLInputElement>)}
           >
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5" style={{ color: 'white' }} />
           </button>
         )}
       </div>
