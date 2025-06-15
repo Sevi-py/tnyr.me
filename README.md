@@ -5,17 +5,17 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-A secure, self-hosted URL shortener with end-to-end encryption. Perfect for privacy-conscious users and organizations.
+A secure, self-hosted URL shortener with custom paswordless encryption. Perfect for privacy-conscious users and organizations.
 
 ![Screenshot](site-screenshot.png)
 
 ## Key Features
 
-🔒 **Passwordless end-to-end Encryption**  
+🔒 **Passwordless Encryption**  
 📡 **No Tracking**   
 🌐 **Modern Web Interface**  
 
-## end-to-end Encryption Process
+## Encryption Process
 
 1. **ID Generation**  
    - Unique random ID created for each link (e.g. `iA4y6jMjFk`)
