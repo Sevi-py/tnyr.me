@@ -100,8 +100,8 @@ def decrypt_url(key, iv, ciphertext):
     
     return plaintext.decode()
 
-@app.route('/shorten', methods=['POST'])
-def shorten_url():
+@app.route('/shorten-server', methods=['POST'])
+def shorten_url_server():
     data = request.get_json()
 
     if not data or 'url' not in data:
@@ -147,7 +147,64 @@ def shorten_url():
     
     return jsonify({"id": id}), 201
 
-@app.route('/<id>')
+@app.route('/shorten', methods=['POST'])
+def shorten_url_client():
+    data = request.get_json()
+    required_fields = ['LOOKUP_HASH', 'ENCRYTION_SALT', 'IV', 'ENCRYPTED_URL']
+
+    if not data or not all(field in data for field in required_fields):
+        missing_fields = [field for field in required_fields if field not in (data or {})]
+        return jsonify({"error": f"Missing fields: {', '.join(missing_fields)}"}), 400
+
+    lookup_hash = data['LOOKUP_HASH']
+    
+    try:
+        encryption_salt = bytes.fromhex(data['ENCRYTION_SALT'])
+        iv = bytes.fromhex(data['IV'])
+        encrypted_url = bytes.fromhex(data['ENCRYPTED_URL'])
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid hex format for salt, IV, or encrypted URL"}), 400
+
+    with get_db() as conn:
+        cur = conn.execute(
+            "SELECT 1 FROM client_side_urls WHERE lookup_hash = ?",
+            (lookup_hash,)
+        )
+        if cur.fetchone():
+            return jsonify({"error": "Lookup hash already exists"}), 409
+        
+        conn.execute(
+            "INSERT INTO client_side_urls (lookup_hash, encryption_salt, iv, encrypted_url) VALUES (?, ?, ?, ?)",
+            (lookup_hash, encryption_salt, iv, encrypted_url)
+        )
+        conn.commit()
+
+    return jsonify({"message": "URL shortened successfully"}), 201
+
+@app.route('/get-encrypted-url', methods=['GET'])
+def get_encrypted_url():
+    lookup_hash = request.args.get('lookup_hash')
+
+    if not lookup_hash:
+        return jsonify({"error": "Missing lookup_hash parameter"}), 400
+
+    with get_db() as conn:
+        cur = conn.execute(
+            "SELECT encryption_salt, iv, encrypted_url FROM client_side_urls WHERE lookup_hash = ?",
+            (lookup_hash,)
+        )
+        row = cur.fetchone()
+
+    if not row:
+        return jsonify({"error": "Link not found"}), 404
+
+    return jsonify({
+        "ENCRYTION_SALT": row['encryption_salt'].hex(),
+        "IV": row['iv'].hex(),
+        "ENCRYPTED_URL": row['encrypted_url'].hex()
+    }), 200
+
+@app.route('/<id>') # Still needed for old links
 def redirect_url(id):
     id_bytes = id.encode()
     
