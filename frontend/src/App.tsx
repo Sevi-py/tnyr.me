@@ -1,44 +1,63 @@
-import { useState } from 'react';
-import axios from 'axios';
-import { Input } from './components/ui/input';
-import { Button } from './components/ui/button';
-import { Shield, Key, Hash, Lock, Copy, EyeOff, Github } from 'lucide-react';
-import { SiBuymeacoffee } from '@icons-pack/react-simple-icons';
+import { useState } from "react";
+import axios from "axios";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Input } from "./components/ui/input";
+import { Button } from "./components/ui/button";
+import { Shield, Key, Hash, Lock, Copy, EyeOff, Github } from "lucide-react";
+import { SiBuymeacoffee } from "@icons-pack/react-simple-icons";
+
+const urlSchema = z.object({
+  url: z
+    .string()
+    .min(1, "URL is required")
+    .url("Please enter a valid URL")
+    .refine((url) => {
+      try {
+        const parsedUrl = new URL(url);
+        return (
+          parsedUrl.protocol === "http:" || parsedUrl.protocol === "https:"
+        );
+      } catch {
+        return false;
+      }
+    }, "URL must start with http:// or https://"),
+});
+
+type UrlFormData = z.infer<typeof urlSchema>;
 
 export default function App() {
-  const [url, setUrl] = useState('');
-  const [shortened, setShortened] = useState('');
-  const [error, setError] = useState('');
+  const [shortened, setShortened] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // const isValidUrl = (string) => {
-  //   try {
-  //     new URL(string);
-  //     return true;
-  //   } catch (_) {
-  //     return false;
-  //   }
-  // };
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    setError,
+    clearErrors,
+  } = useForm<UrlFormData>({
+    resolver: zodResolver(urlSchema),
+    mode: "onChange", // Validate on change for better UX
+  });
 
-  const handleSubmit = async (e: any) => {
-    e.preventDefault();
-    // if (!isValidUrl(url)) {
-    //   setError('Please enter a valid URL');
-    //   return;
-    // }
-    
+  const onSubmit = async (data: UrlFormData) => {
     setLoading(true);
+    clearErrors();
+
     try {
-      const response = await axios.post('/shorten', {
-        url: url
+      const response = await axios.post("/shorten", {
+        url: data.url,
       });
       const shortUrl = `tnyr.me/${response.data.id}`;
       setShortened(shortUrl);
-      setError('');
-    } catch (err) {
-      setError('Error shortening URL. Please try again.');
+    } catch {
+      // Simplified error handling - all errors go to root
+      setError("root", { message: "Error shortening URL. Please try again." });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const copyToClipboard = () => {
@@ -60,27 +79,35 @@ export default function App() {
             <div className="flex items-center gap-2 justify-center">
               <Lock className="w-5 h-5" />
               <p className="text-center">
-                Your links are encrypted - we can't see your destination URLs or share your links!
+                Your links are encrypted - we can't see your destination URLs or
+                share your links!
               </p>
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="flex flex-col space-y-4">
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="flex flex-col space-y-4"
+          >
             <Input
               type="text"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
+              {...register("url")}
               placeholder="Enter your long URL here"
               className="bg-slate-700/50 border-slate-600 text-lg h-14 rounded-xl"
             />
-            {error && <p className="text-red-400 text-sm">{error}</p>}
-            
+            {errors.url && (
+              <p className="text-red-400 text-sm">{errors.url.message}</p>
+            )}
+            {errors.root && (
+              <p className="text-red-400 text-sm">{errors.root.message}</p>
+            )}
+
             <Button
               type="submit"
               disabled={loading}
               className="h-12 text-lg rounded-xl bg-indigo-600 hover:bg-indigo-700 transition-colors"
             >
-              {loading ? 'Shortening...' : 'Create Secure Link'}
+              {loading ? "Shortening..." : "Create Secure Link"}
             </Button>
           </form>
 
@@ -106,7 +133,7 @@ export default function App() {
           )}
         </div>
       </div>
-      
+
       <div className="w-full max-w-3xl mt-12 mb-8">
         <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 shadow-xl border border-slate-700/30">
           <h2 className="text-2xl font-semibold mb-6 flex items-center gap-2">
@@ -121,10 +148,13 @@ export default function App() {
                   <Shield className="w-5 h-5 text-indigo-400" />
                 </div>
                 <div>
-                  <h3 className="font-medium mb-1">Zero-Knowledge Encryption</h3>
+                  <h3 className="font-medium mb-1">
+                    Zero-Knowledge Encryption
+                  </h3>
                   <p className="text-slate-400 text-sm">
-                    Your URL is encrypted using AES-256 with a key derived from your unique link ID. 
-                    Not even we can decrypt or view your original URL.
+                    Your URL is encrypted using AES-256 with a key derived from
+                    your unique link ID. Not even we can decrypt or view your
+                    original URL.
                   </p>
                 </div>
               </div>
@@ -136,7 +166,9 @@ export default function App() {
                 <div>
                   <h3 className="font-medium mb-1">Secure Storage</h3>
                   <p className="text-slate-400 text-sm">
-                    We generate two separate hashes - one for identification and another for encrypting the destination. Without the exact ID, the link is completely inaccessible.
+                    We generate two separate hashes - one for identification and
+                    another for encrypting the destination. Without the exact
+                    ID, the link is completely inaccessible.
                   </p>
                 </div>
               </div>
@@ -150,8 +182,8 @@ export default function App() {
                 <div>
                   <h3 className="font-medium mb-1">Complete Anonymity</h3>
                   <p className="text-slate-400 text-sm">
-                    There's no way to discover or list existing links. Each URL exists 
-                    only for those who possess the unique ID.
+                    There's no way to discover or list existing links. Each URL
+                    exists only for those who possess the unique ID.
                   </p>
                 </div>
               </div>
@@ -163,7 +195,9 @@ export default function App() {
                 <div>
                   <h3 className="font-medium mb-1">Security Process</h3>
                   <p className="text-slate-400 text-sm">
-                    We never log IP addresses, track users, or use cookies. Each request is completely anonymous - your browsing activity leaves no trace in our systems.
+                    We never log IP addresses, track users, or use cookies. Each
+                    request is completely anonymous - your browsing activity
+                    leaves no trace in our systems.
                   </p>
                 </div>
               </div>
@@ -172,7 +206,9 @@ export default function App() {
 
           <div className="mt-6 p-4 bg-slate-700/30 rounded-lg border border-slate-700/50">
             <p className="text-sm text-slate-400">
-              🔒 <span className="font-medium">Important:</span> Make sure to Bookmark your tnyr.me links safely - there's no way to recover lost IDs or access links without them.
+              🔒 <span className="font-medium">Important:</span> Make sure to
+              Bookmark your tnyr.me links safely - there's no way to recover
+              lost IDs or access links without them.
             </p>
           </div>
         </div>
@@ -193,7 +229,7 @@ export default function App() {
           rel="noopener noreferrer"
           className="hover:text-slate-300 transition-colors"
         >
-        <SiBuymeacoffee className="w-8 h-8" />
+          <SiBuymeacoffee className="w-8 h-8" />
         </a>
       </footer>
     </div>
