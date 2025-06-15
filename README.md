@@ -18,15 +18,16 @@ A secure, self-hosted URL shortener with custom paswordless encryption. Perfect 
 ## Encryption Process
 
 1. **ID Generation**  
-   - Unique random ID created for each link (e.g. `R53nSAg`)
-   - Example: `google.com` → `tnyr.me/R53nSAg`
+   - Unique random ID created for each link (e.g. `iA4y6jMjFk`)
+   - Example: `google.com` → `tnyr.me/#iA4y6jMjFk`
 
 2. **Hashing**  
-   - Two Argon2 hashes are calculated by using different salts
+   - Two Scrypt hashes are calculated by using different salts
+   - Original URL encrypted with AES-256 using Hash 2
+   - The whole encryption and decryption process happens in the browser
 
 3. **Storage**  
-   - Original URL encrypted with AES-256-GCM using Hash 2
-   - Only Hash 1 (storage key) is saved in database
+   - Only Hash 1 (storage key) and the encrypted URL are saved in database
 
 ## Development Setup
 
