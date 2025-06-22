@@ -9,9 +9,17 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.backends import default_backend
 
+# --- Determine absolute path for file access ---
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+CONFIG_PATH = os.path.join(APP_DIR, 'config.json')
+
 # Load configuration
-with open('config.json') as f:
+with open(CONFIG_PATH) as f:
     config = json.load(f)
+
+# --- Make database path absolute ---
+if not os.path.isabs(config['database']['path']):
+    config['database']['path'] = os.path.join(APP_DIR, config['database']['path'])
 
 app = Flask(__name__, static_folder='dist', static_url_path='/static')
 
