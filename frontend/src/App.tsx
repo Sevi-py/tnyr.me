@@ -137,7 +137,7 @@ export default function App() {
           const lookupHash = arrayToHex(lookupKey);
           
           // Get encrypted data from server
-          const response = await axios.get(`http://tnyr.me/get-encrypted-url?lookup_hash=${lookupHash}`);
+          const response = await axios.get(`https://tnyr.me/get-encrypted-url?lookup_hash=${lookupHash}`);
           const { ENCRYTION_SALT, IV, ENCRYPTED_URL } = response.data;
           
           // Derive decryption key using the encryption salt
