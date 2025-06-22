@@ -206,7 +206,7 @@ export default function App() {
       const { iv, encrypted } = await encryptUrl(encryptionKey, url);
       
       // Send to server
-      await axios.post("http://tnyr.me/shorten", {
+      await axios.post("https://tnyr.me/shorten", {
         LOOKUP_HASH: arrayToHex(lookupKey),
         ENCRYTION_SALT: arrayToHex(encryptionSalt),
         IV: arrayToHex(iv),
