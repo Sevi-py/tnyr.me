@@ -47,14 +47,21 @@ A secure, self-hosted URL shortener with custom paswordless encryption. Perfect 
    pip install -r requirements.txt
    ```
 
-3. **Start Server**
+3. **Setup the config:**
+   ```bash
+   cp config_template.json config.json
+   python generate_salts.py
+   ```
+   You will see two salts, which you can use in the config.
+
+4. **Start Server**
    ```bash
    python main.py
    ```
 
-4. Access at `http://localhost:5000`
+5. Access at `http://localhost:5000`
 
-### Deveopment
+### Development
 
 1. **Start development server:**
    ```bash
