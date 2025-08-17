@@ -1,6 +1,6 @@
 {
-  "name": "tnyr.me",
-  "short_name": "tnyr",
+  "name": "%VITE_DOMAIN%",
+  "short_name": "%VITE_DOMAIN%",
   "icons": [
     {
       "src": "/assets/favicon/web-app-manifest-192x192.png",

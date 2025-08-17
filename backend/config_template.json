@@ -15,5 +15,9 @@
     "id_generation": {
         "length": 10,
         "allowed_chars": "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ123456789"
+    },
+    "domain": {
+        "name": "your-domain.com",
+        "api_base_url": "https://your-domain.com"
     }
 }

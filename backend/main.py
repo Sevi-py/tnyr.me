@@ -258,5 +258,29 @@ def serve_static_files(path):
     return app.send_static_file(path)
 
 if __name__ == '__main__':
+    # Enable permissive CORS for development
+    @app.before_request
+    def _cors_handle_preflight():
+        if request.method == 'OPTIONS':
+            response = app.make_default_options_response()
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
+            requested_headers = request.headers.get('Access-Control-Request-Headers', '')
+            if requested_headers:
+                response.headers['Access-Control-Allow-Headers'] = requested_headers
+            else:
+                response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+            response.headers['Access-Control-Max-Age'] = '86400'
+            return response
+
+    @app.after_request
+    def _cors_add_headers(response):
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
+        # Keep this broad for dev; browsers will ignore extras if not needed
+        if 'Access-Control-Allow-Headers' not in response.headers:
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        return response
+
     init_db()
     app.run(host='0.0.0.0', port=5000)

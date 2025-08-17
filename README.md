@@ -29,44 +29,45 @@ A secure, self-hosted URL shortener with custom paswordless encryption. Perfect 
 3. **Storage**  
    - Only Hash 1 (storage key) and the encrypted URL are saved in database
 
-## Development Setup
+## Self Hosting and Development 
 
 ### Prerequisites
 - Python 3.9+
-- Node.js 16+ (for frontend development)
+- Node.js 16+
 
-### Quick Start
-1. **Clone Repository**
+### Instructions
+
+1. **Deploy with your domain:**
    ```bash
-   git clone https://github.com/sevi-py/tnyr.me.git
-   cd tnyr/backend
+   ./deploy.sh your-domain.com
    ```
 
-2. **Install Dependencies**
+2. **Install Python dependencies:**
    ```bash
    pip install -r requirements.txt
    ```
 
-3. **Configuration**  
-   Rename `config_template.json` to `config.json`  
-   Generate salts using `python generate_salts.py`  
-   Replace the placeholders with the salts you generated  
-
-4. **Start Server**
+3. **Start Server**
    ```bash
    python main.py
    ```
 
-5. Access at `http://localhost:5000`
+4. Access at `http://localhost:5000`
 
-## Frontend Development
-The backend serves pre-built frontend files. To modify the frontend:
+### Deveopment
 
-```bash
-cd frontend
-npm install
-npm run build
-```
+1. **Start development server:**
+   ```bash
+   cd frontend
+   npm run dev
+   ```
+
+2. **Start backend server:**
+   ```bash
+   cd backend
+   pip install -r requirements.txt
+   python main.py
+   ```
 
 ## Why Choose [tnyr.me](https://tnyr.me)?
 

@@ -30,6 +30,14 @@ type UrlFormData = z.infer<typeof urlSchema>;
 
 // Configuration constants
 const ALLOWED_CHARS = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ123456789+*-';
+const DOMAIN = import.meta.env.VITE_DOMAIN || 'tnyr.me';
+const getDefaultApiBaseUrl = () => {
+  if (typeof window !== 'undefined' && window.location && window.location.origin) {
+    return window.location.origin;
+  }
+  return `https://${DOMAIN}`;
+};
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || getDefaultApiBaseUrl();
 // Shared salt for lookup hash (protects against rainbow tables)
 const LOOKUP_SALT = new Uint8Array([0x74, 0x6e, 0x79, 0x72, 0x2e, 0x6d, 0x65, 0x5f, 0x6c, 0x6f, 0x6f, 0x6b, 0x75, 0x70, 0x5f, 0x73]); // "tnyr.me_lookup_s"
 
@@ -137,7 +145,7 @@ export default function App() {
           const lookupHash = arrayToHex(lookupKey);
           
           // Get encrypted data from server
-          const response = await axios.get(`https://tnyr.me/get-encrypted-url?lookup_hash=${lookupHash}`);
+          const response = await axios.get(`${API_BASE_URL}/get-encrypted-url?lookup_hash=${lookupHash}`);
           const { ENCRYTION_SALT, IV, ENCRYPTED_URL } = response.data;
           
           // Derive decryption key using the encryption salt
@@ -206,14 +214,15 @@ export default function App() {
       const { iv, encrypted } = await encryptUrl(encryptionKey, url);
       
       // Send to server
-      await axios.post("https://tnyr.me/shorten", {
+      await axios.post(`${API_BASE_URL}/shorten`, {
         LOOKUP_HASH: arrayToHex(lookupKey),
         ENCRYTION_SALT: arrayToHex(encryptionSalt),
         IV: arrayToHex(iv),
         ENCRYPTED_URL: arrayToHex(encrypted)
       });
       
-      const shortUrl = `tnyr.me/#${linkId}`;
+      const protocol = typeof window !== 'undefined' && window.location ? window.location.protocol : 'https:';
+      const shortUrl = `${protocol}//${DOMAIN}/#${linkId}`;
       setShortened(shortUrl);
     } catch (error) {
       console.error('Encryption error:', error);
@@ -304,12 +313,12 @@ export default function App() {
           {shortened && (
             <div className="mt-6 p-4 bg-slate-700/30 rounded-lg flex items-center justify-between">
               <a
-                href={`https://${shortened}`}
+                href={shortened}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-indigo-400 hover:text-indigo-300 break-all"
               >
-                {shortened}
+                {shortened.replace(/^https?:\/\//, '')}
               </a>
               <Button
                 variant="ghost"
@@ -381,8 +390,7 @@ export default function App() {
                 <div>
                   <h3 className="font-medium mb-1">Security Process</h3>
                   <p className="text-slate-400 text-sm">
-                    We never log IP addresses, track users, or use cookies. Each
-                    request is completely anonymous - your browsing activity
+                    We never log IP addresses, track users, or use cookies. Your browsing activity
                     leaves no trace in our systems.
                   </p>
                 </div>
@@ -393,7 +401,7 @@ export default function App() {
           <div className="mt-6 p-4 bg-slate-700/30 rounded-lg border border-slate-700/50">
             <p className="text-sm text-slate-400">
               🔒 <span className="font-medium">Important:</span> Make sure to
-              Bookmark your tnyr.me links safely - there's no way to recover
+              Bookmark your {DOMAIN} links safely - there's no way to recover
               lost IDs or access links without them.
             </p>
           </div>
