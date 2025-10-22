@@ -115,26 +115,30 @@ def hash_id_for_lookup_client(id_str):
     
     # Use hashlib's scrypt with the same parameters as the frontend
     # Frontend uses: N: 2**17, r: 8, p: 1, dkLen: 32
+    # Memory usage: 128 * N * r * p = 128 * 131072 * 8 * 1 = ~128MB
     hash_result = hashlib_scrypt(
         password=id_str.encode(),
         salt=LOOKUP_SALT,
         n=2**17,
         r=8,
         p=1,
-        dklen=32
+        dklen=32,
+        maxmem=150 * 1024 * 1024  # Allow up to 150MB (scrypt needs ~128MB)
     )
     return hash_result.hex()
 
 def derive_encryption_key_client(id_str, salt):
     """Derive encryption key using the same method as the client (scrypt)"""
     # Use hashlib's scrypt with the same parameters as the frontend
+    # Memory usage: ~128MB
     hash_result = hashlib_scrypt(
         password=id_str.encode(),
         salt=salt,
         n=2**17,
         r=8,
         p=1,
-        dklen=32
+        dklen=32,
+        maxmem=150 * 1024 * 1024  # Allow up to 150MB (scrypt needs ~128MB)
     )
     return hash_result
 
