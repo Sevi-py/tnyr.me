@@ -8,6 +8,7 @@ from argon2.low_level import hash_secret_raw, Type
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.backends import default_backend
+from hashlib import scrypt as hashlib_scrypt
 
 # --- Determine absolute path for file access ---
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -107,6 +108,126 @@ def decrypt_url(key, iv, ciphertext):
     plaintext = unpadder.update(padded_plaintext) + unpadder.finalize()
     
     return plaintext.decode()
+
+def hash_id_for_lookup_client(id_str):
+    """Hash ID for lookup using the same method as the client (scrypt with LOOKUP_SALT)"""
+    LOOKUP_SALT = bytes([0x74, 0x6e, 0x79, 0x72, 0x2e, 0x6d, 0x65, 0x5f, 0x6c, 0x6f, 0x6f, 0x6b, 0x75, 0x70, 0x5f, 0x73])
+    
+    # Use hashlib's scrypt with the same parameters as the frontend
+    # Frontend uses: N: 2**17, r: 8, p: 1, dkLen: 32
+    hash_result = hashlib_scrypt(
+        password=id_str.encode(),
+        salt=LOOKUP_SALT,
+        n=2**17,
+        r=8,
+        p=1,
+        dklen=32
+    )
+    return hash_result.hex()
+
+def derive_encryption_key_client(id_str, salt):
+    """Derive encryption key using the same method as the client (scrypt)"""
+    # Use hashlib's scrypt with the same parameters as the frontend
+    hash_result = hashlib_scrypt(
+        password=id_str.encode(),
+        salt=salt,
+        n=2**17,
+        r=8,
+        p=1,
+        dklen=32
+    )
+    return hash_result
+
+def encrypt_url_client(key, plaintext):
+    """Encrypt URL using the same method as the client (AES-CBC)"""
+    if len(key) != 32:
+        raise ValueError(f"Invalid key length: {len(key)} bytes (need 32)")
+    
+    iv = os.urandom(16)
+    padder = padding.PKCS7(128).padder()
+    padded_data = padder.update(plaintext.encode()) + padder.finalize()
+    
+    cipher = Cipher(
+        algorithms.AES(key),
+        modes.CBC(iv),
+        backend=default_backend()
+    )
+    encryptor = cipher.encryptor()
+    ciphertext = encryptor.update(padded_data) + encryptor.finalize()
+    
+    return iv, ciphertext
+
+ABUSE_WARNING_MARKER = '__ABUSE_WARNING__'
+
+@app.route('/delete-url', methods=['POST'])
+def delete_url():
+    """Replace a URL with an abuse warning page (both old and new encryption methods)"""
+    # Check if deletion is enabled
+    deletion_token = config.get('deletion_token', '')
+    if not deletion_token:
+        return jsonify({"error": "URL deletion is disabled"}), 403
+    
+    data = request.get_json()
+    
+    if not data or 'id' not in data or 'deletion_token' not in data:
+        return jsonify({"error": "Missing id or deletion_token"}), 400
+    
+    # Verify deletion token
+    if data['deletion_token'] != deletion_token:
+        return jsonify({"error": "Invalid deletion token"}), 403
+    
+    link_id = data['id']
+    updated = False
+    
+    with get_db() as conn:
+        # Try to update old server-side encrypted URLs table
+        id_bytes = link_id.encode()
+        lookup_hash_old = derive_key(id_bytes, SALT1).hex()
+        
+        # Check if it exists in old table
+        cur = conn.execute(
+            "SELECT 1 FROM urls WHERE lookup_hash = ?",
+            (lookup_hash_old,)
+        )
+        if cur.fetchone():
+            # Re-encrypt the abuse marker using server-side method
+            encryption_key = derive_key(id_bytes, SALT2)
+            iv, encrypted_warning = encrypt_url(encryption_key, ABUSE_WARNING_MARKER)
+            
+            conn.execute(
+                "UPDATE urls SET iv = ?, encrypted_url = ? WHERE lookup_hash = ?",
+                (iv, encrypted_warning, lookup_hash_old)
+            )
+            conn.commit()
+            updated = True
+        
+        # If not found, try to update new client-side encrypted URLs table
+        if not updated:
+            lookup_hash_new = hash_id_for_lookup_client(link_id)
+            
+            # Check if it exists in new table
+            cur = conn.execute(
+                "SELECT 1 FROM client_side_urls WHERE lookup_hash = ?",
+                (lookup_hash_new,)
+            )
+            if cur.fetchone():
+                # Re-encrypt the abuse marker using client-side method
+                # Generate new encryption salt (since original was random)
+                new_encryption_salt = os.urandom(16)
+                encryption_key = derive_encryption_key_client(link_id, new_encryption_salt)
+                iv, encrypted_warning = encrypt_url_client(encryption_key, ABUSE_WARNING_MARKER)
+                
+                conn.execute(
+                    "UPDATE client_side_urls SET encryption_salt = ?, iv = ?, encrypted_url = ? WHERE lookup_hash = ?",
+                    (new_encryption_salt, iv, encrypted_warning, lookup_hash_new)
+                )
+                conn.commit()
+                updated = True
+    
+    if updated:
+        return jsonify({"message": "URL replaced with abuse warning successfully"}), 200
+    else:
+        return jsonify({"error": "Link not found"}), 404
 
 @app.route('/shorten-server', methods=['POST'])
 def shorten_url_server():
@@ -238,6 +359,122 @@ def redirect_url(id):
         url = decrypt_url(decryption_key, row['iv'], row['encrypted_url'])
     except Exception as e:
         return jsonify({"error": "Decryption failed"}), 500
+    
+    # Check if this is an abuse warning
+    if url == ABUSE_WARNING_MARKER:
+        # Redirect to home page with abuse warning hash
+        domain = config.get('domain', {}).get('name', 'tnyr.me')
+        abuse_html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="googlebot" content="noindex, nofollow">
+    <title>Link Removed - Abuse Detected</title>
+    <style>
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #9333ea 0%, #7e22ce 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 20px;
+        }}
+        .container {{
+            background: white;
+            border-radius: 12px;
+            padding: 2rem 3rem;
+            max-width: 700px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }}
+        h1 {{
+            color: #dc2626;
+            margin-top: 0;
+            font-size: 28px;
+        }}
+        .warning-icon {{
+            font-size: 64px;
+            text-align: center;
+            margin-bottom: 20px;
+        }}
+        p {{
+            color: #374151;
+            line-height: 1.6;
+            margin: 15px 0;
+        }}
+        .alert-box {{
+            background: #fef2f2;
+            border-left: 4px solid #dc2626;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }}
+        .info-box {{
+            background: #eff6ff;
+            border-left: 4px solid #2563eb;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }}
+        ul {{
+            color: #374151;
+            line-height: 1.8;
+        }}
+        li {{
+            margin: 8px 0;
+        }}
+        strong {{
+            color: #1f2937;
+        }}
+        a {{
+            color: #2563eb;
+            text-decoration: underline;
+        }}
+        a:hover {{
+            color: #1d4ed8;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="warning-icon">⚠️</div>
+        <h1>This Link Has Been Removed</h1>
+        
+        <div class="alert-box">
+            <p><strong>This shortened URL has been disabled due to abuse reports.</strong></p>
+        </div>
+        
+        <p>The link you followed has been removed from our service because it was reported for one or more of the following reasons:</p>
+        
+        <ul>
+            <li>Phishing or scam attempt</li>
+            <li>Malware distribution</li>
+            <li>Fraudulent content</li>
+            <li>Harassment or threats</li>
+            <li>Other malicious activity</li>
+        </ul>
+        
+        <div class="info-box">
+            <p><strong>⚠️ Important Security Reminders:</strong></p>
+            <ul>
+                <li>Never share personal information, passwords, or financial details through untrusted links</li>
+                <li>Be cautious of urgent messages claiming your account will be locked or money is owed</li>
+                <li>Verify the authenticity of communications by contacting organizations directly through official channels</li>
+                <li>Legitimate companies will never ask for sensitive information via email or text messages</li>
+                <li>If something seems too good to be true, it probably is</li>
+            </ul>
+        </div>
+        
+        <p style="text-align: center; font-size: 14px;">
+            <strong>If you believe this link was removed in error, please contact us at <a href="mailto:abuse@{domain}">abuse@{domain}</a></strong>
+        </p>
+    </div>
+</body>
+</html>"""
+        return abuse_html, 200
     
     return redirect(url, code=302)
 

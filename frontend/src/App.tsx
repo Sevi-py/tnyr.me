@@ -8,6 +8,7 @@ import { Input } from "./components/ui/input";
 import { Button } from "./components/ui/button";
 import { Shield, Key, Hash, Lock, Copy, EyeOff, Github, Loader2 } from "lucide-react";
 import { SiBuymeacoffee } from "@icons-pack/react-simple-icons";
+import AbuseWarning from "./components/AbuseWarning";
 
 const urlSchema = z.object({
   url: z
@@ -129,6 +130,7 @@ export default function App() {
   const [shortened, setShortened] = useState("");
   const [loading, setLoading] = useState(false);
   const [isDecrypting, setIsDecrypting] = useState(false);
+  const [showAbuseWarning, setShowAbuseWarning] = useState(false);
   
   // Check for hash in URL on component mount for decryption
   useEffect(() => {
@@ -160,6 +162,13 @@ export default function App() {
           const iv = hexToArray(IV);
           const encryptedUrl = hexToArray(ENCRYPTED_URL);
           const decryptedUrl = await decryptUrl(decryptionKey, iv, encryptedUrl);
+          
+          // Check if this is an abuse warning
+          if (decryptedUrl === '__ABUSE_WARNING__') {
+            setIsDecrypting(false);
+            setShowAbuseWarning(true);
+            return;
+          }
           
           // Redirect to decrypted URL
           window.location.href = decryptedUrl;
@@ -235,6 +244,11 @@ export default function App() {
   const copyToClipboard = () => {
     navigator.clipboard.writeText(shortened);
   };
+
+  // Show abuse warning if detected
+  if (showAbuseWarning) {
+    return <AbuseWarning domain={DOMAIN} />;
+  }
 
   // Decryption loading screen
   if (isDecrypting) {
@@ -408,23 +422,34 @@ export default function App() {
         </div>
       </div>
 
-      <footer className="bottom-4 flex items-center gap-3 text-slate-400">
-        <a
-          href="https://github.com/Sevi-py/tnyr.me"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hover:text-slate-300 transition-colors"
-        >
-          <Github className="w-8 h-8" />
-        </a>
-        <a
-          href="https://www.buymeacoffee.com/severin.hilbert"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hover:text-slate-300 transition-colors"
-        >
-          <SiBuymeacoffee className="w-8 h-8" />
-        </a>
+      <footer className="bottom-4 flex flex-col items-center gap-3">
+        <div className="flex items-center gap-3 text-slate-400">
+          <a
+            href="https://github.com/Sevi-py/tnyr.me"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-slate-300 transition-colors"
+          >
+            <Github className="w-8 h-8" />
+          </a>
+          <a
+            href="https://www.buymeacoffee.com/severin.hilbert"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-slate-300 transition-colors"
+          >
+            <SiBuymeacoffee className="w-8 h-8" />
+          </a>
+        </div>
+        <div className="text-xs text-slate-500 text-center">
+          Report abuse:{" "}
+          <a
+            href={`mailto:abuse@${DOMAIN}`}
+            className="hover:text-slate-400 transition-colors underline"
+          >
+            abuse@{DOMAIN}
+          </a>
+        </div>
       </footer>
     </div>
   );

@@ -19,5 +19,6 @@
     "domain": {
         "name": "your-domain.com",
         "api_base_url": "https://your-domain.com"
-    }
+    },
+    "deletion_token": "EITHER_REPLACE_ME_OR_REMOVE_ME_TO_DISABLE_DELETION"
 }
