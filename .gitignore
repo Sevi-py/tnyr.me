@@ -2,3 +2,4 @@ __pycache__/
 *.db
 *.ppk
 config.json
+.venv/
