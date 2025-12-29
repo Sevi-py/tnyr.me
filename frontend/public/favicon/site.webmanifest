@@ -1,6 +1,6 @@
 {
-  "name": "%VITE_DOMAIN%",
-  "short_name": "%VITE_DOMAIN%",
+  "name": "__TNYR_DOMAIN__",
+  "short_name": "__TNYR_DOMAIN__",
   "icons": [
     {
       "src": "/assets/favicon/web-app-manifest-192x192.png",

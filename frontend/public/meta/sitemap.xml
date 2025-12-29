@@ -6,7 +6,7 @@
             http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
 
 <url>
-  <loc>%VITE_PUBLIC_URL%/</loc>
+  <loc>__TNYR_PUBLIC_URL__/</loc>
 </url>
 
 

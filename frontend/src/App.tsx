@@ -34,14 +34,14 @@ const ALLOWED_CHARS = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ12345678
 const getConfiguredDomain = () => {
   if (typeof window === 'undefined') return '';
   const v = (window as any).__TNYR_DOMAIN__;
-  if (typeof v === 'string' && v && v !== '%VITE_DOMAIN%') return v;
+  if (typeof v === 'string' && v && v !== '%VITE_DOMAIN%' && v !== '__TNYR_DOMAIN__') return v;
   return '';
 };
 
 const getConfiguredPublicUrl = () => {
   if (typeof window === 'undefined') return '';
   const v = (window as any).__TNYR_PUBLIC_URL__;
-  if (typeof v === 'string' && v && v !== '%VITE_PUBLIC_URL%') return v.replace(/\/+$/, '');
+  if (typeof v === 'string' && v && v !== '%VITE_PUBLIC_URL%' && v !== '__TNYR_PUBLIC_URL__') return v.replace(/\/+$/, '');
   return '';
 };
 
