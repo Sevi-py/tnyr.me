@@ -6,7 +6,7 @@
             http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
 
 <url>
-  <loc>https://%VITE_DOMAIN%/</loc>
+  <loc>%VITE_PUBLIC_URL%/</loc>
 </url>
 
 

@@ -31,35 +31,56 @@ A secure, self-hosted URL shortener with custom passwordless encryption. Perfect
 
 ## Self Hosting and Development 
 
-### Prerequisites
-- Python 3.9+
-- Node.js 16+
+### Self-host (recommended): Docker / Docker Compose
 
-### Instructions
+#### Prerequisites
+- Docker (and optionally Docker Compose)
 
-1. **Deploy with your domain:**
-   ```bash
-   ./deploy.sh your-domain.com
-   ```
+#### 1) Generate salts (optional; only if you hosted tnyr.me before **Dec 30, 2025**)
 
-2. **Install Python dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+```bash
+python3 backend/generate_salts.py --env
+```
 
-3. **Setup the config:**
-   ```bash
-   cp config_template.json config.json
-   python generate_salts.py
-   ```
-   You will see two salts, which you can use in the config.
+#### 2) Run with Docker Compose (no secrets required)
 
-4. **Start Server**
-   ```bash
-   python main.py
-   ```
+```bash
+mkdir -p data
+export TNYR_PUBLIC_URL=https://example.com  # (or http://1.2.3.4:5502)
+docker compose up -d --build
+```
 
-5. Access at `http://localhost:5000`
+Required env vars:
+- `TNYR_PUBLIC_URL` (example `https://example.com`, `http://1.2.3.4:5502`)
+
+Optional env vars:
+- `TNYR_DB_PATH` (defaults to `/data/urls.db` in the container via compose)
+- `TNYR_DELETION_TOKEN` (set to enable `POST /delete-url`)
+- **Legacy link support (only if you hosted tnyr.me before Dec 30, 2025)**:
+  - `TNYR_SALT1_HEX` (16 bytes = 32 hex chars)
+  - `TNYR_SALT2_HEX` (16 bytes = 32 hex chars)
+  - `TNYR_ARGON2_TIME_COST` (default `3`)
+  - `TNYR_ARGON2_MEMORY_COST` (default `65536`)
+  - `TNYR_ARGON2_PARALLELISM` (default `1`)
+  - `TNYR_ARGON2_HASH_LENGTH` (default `32`)
+
+**Note**: Creating new legacy links via `POST /shorten-server` is disabled. The legacy env vars above are only for resolving existing old `/<id>` links.
+
+#### 3) Or run with plain Docker
+
+```bash
+docker build -t tnyr .
+docker run --rm \
+  -p 5502:5502 \
+  -v "$PWD/data:/data" \
+  -e TNYR_PUBLIC_URL="${TNYR_PUBLIC_URL:-http://localhost:5502}" \
+  -e TNYR_DB_PATH="/data/urls.db" \
+  tnyr
+```
+
+Then open `http://localhost:5502`.
+
+**Note**: On container start, the entrypoint will initialize the SQLite schema (if missing) and replace `%VITE_PUBLIC_URL%` / `%VITE_DOMAIN%` placeholders in `backend/dist` based on `TNYR_PUBLIC_URL`.
 
 ### Development
 
@@ -73,6 +94,11 @@ A secure, self-hosted URL shortener with custom passwordless encryption. Perfect
    ```bash
    cd backend
    pip install -r requirements.txt
+   # Required:
+   export TNYR_PUBLIC_URL=https://example.com
+   # Optional (legacy server-side mode only):
+   # export TNYR_SALT1_HEX=...  # 32 hex chars
+   # export TNYR_SALT2_HEX=...  # 32 hex chars
    python main.py
    ```
 

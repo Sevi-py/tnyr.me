@@ -1,0 +1,26 @@
+services:
+  tnyr:
+    build: .
+    ports:
+      - "5502:5502"
+    environment:
+      # Required (https://example.com or http://1.2.3.4:5502)
+      - TNYR_PUBLIC_URL=${TNYR_PUBLIC_URL:?set TNYR_PUBLIC_URL (https://example.com or http://1.2.3.4:5502)}
+      # Persistence
+      - TNYR_DB_PATH=/data/urls.db
+      - TNYR_PORT=5502
+      # Optional (enables /delete-url)
+      - TNYR_DELETION_TOKEN=${TNYR_DELETION_TOKEN:-}
+      # Optional: legacy server-side mode (/shorten-server + old /<id>)
+      - TNYR_SALT1_HEX=${TNYR_SALT1_HEX:-}
+      - TNYR_SALT2_HEX=${TNYR_SALT2_HEX:-}
+      # Optional: Argon2 params (legacy link decryption only)
+      - TNYR_ARGON2_TIME_COST=${TNYR_ARGON2_TIME_COST:-}
+      - TNYR_ARGON2_MEMORY_COST=${TNYR_ARGON2_MEMORY_COST:-}
+      - TNYR_ARGON2_PARALLELISM=${TNYR_ARGON2_PARALLELISM:-}
+      - TNYR_ARGON2_HASH_LENGTH=${TNYR_ARGON2_HASH_LENGTH:-}
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
+
+

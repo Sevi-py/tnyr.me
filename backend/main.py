@@ -1,5 +1,4 @@
 import os
-import json
 import sqlite3
 import secrets
 from flask import Flask, request, jsonify, redirect
@@ -12,30 +11,94 @@ from hashlib import scrypt as hashlib_scrypt
 
 # --- Determine absolute path for file access ---
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
-CONFIG_PATH = os.path.join(APP_DIR, 'config.json')
 
-# Load configuration
-with open(CONFIG_PATH) as f:
-    config = json.load(f)
+def _env_int(name: str, default: int) -> int:
+    val = os.getenv(name)
+    if val is None or val == "":
+        return default
+    return int(val)
 
-# --- Make database path absolute ---
-if not os.path.isabs(config['database']['path']):
-    config['database']['path'] = os.path.join(APP_DIR, config['database']['path'])
+def _default_db_path() -> str:
+    # Good Docker default, but keep local-dev workable too
+    if os.path.isdir("/data"):
+        return "/data/urls.db"
+    return "urls.db"
+
+def _load_config_from_env() -> dict:
+    salt1_hex = os.getenv("TNYR_SALT1_HEX", "").strip()
+    salt2_hex = os.getenv("TNYR_SALT2_HEX", "").strip()
+    # Salts are only required for the legacy server-side mode (/shorten-server and old /<id> links).
+    # For the default client-side mode (/shorten + /get-encrypted-url + /#... links), no server secrets are required.
+
+    db_path = os.getenv("TNYR_DB_PATH", _default_db_path()).strip()
+
+    public_url = os.getenv("TNYR_PUBLIC_URL", "").strip()
+    if not public_url:
+        raise RuntimeError("Missing required environment variable: TNYR_PUBLIC_URL (https://example.com or http://1.2.3.4:5502)")
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse(public_url)
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            raise ValueError("Invalid TNYR_PUBLIC_URL")
+        domain = parsed.netloc
+        normalized_public_url = f"{parsed.scheme}://{parsed.netloc}"
+    except Exception as e:
+        raise RuntimeError("Invalid TNYR_PUBLIC_URL (must be http(s)://host[:port])") from e
+
+    cfg = {
+        "salts": {
+            "salt1_var": salt1_hex,
+            "salt2_var": salt2_hex,
+        },
+        "argon2": {
+            "time_cost": _env_int("TNYR_ARGON2_TIME_COST", 3),
+            "memory_cost": _env_int("TNYR_ARGON2_MEMORY_COST", 65536),
+            "parallelism": _env_int("TNYR_ARGON2_PARALLELISM", 1),
+            "hash_length": _env_int("TNYR_ARGON2_HASH_LENGTH", 32),
+        },
+        "database": {
+            "path": db_path,
+        },
+        "id_generation": {
+            "length": _env_int("TNYR_ID_LENGTH", 10),
+            "allowed_chars": os.getenv(
+                "TNYR_ID_ALLOWED_CHARS",
+                "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ123456789",
+            ),
+        },
+        "domain": {
+            # Not required for core functionality; used only in the abuse page and SEO files
+            "name": domain,
+            "api_base_url": os.getenv("TNYR_API_BASE_URL", "").strip() or normalized_public_url,
+        },
+        "deletion_token": os.getenv("TNYR_DELETION_TOKEN", "").strip(),
+    }
+
+    # --- Make database path absolute (except SQLite special :memory:) ---
+    if cfg["database"]["path"] != ":memory:" and not os.path.isabs(cfg["database"]["path"]):
+        cfg["database"]["path"] = os.path.join(APP_DIR, cfg["database"]["path"])
+
+    return cfg
+
+config = _load_config_from_env()
 
 app = Flask(__name__, static_folder='dist', static_url_path='/static')
 
-# Validate and load salts
-salt1_hex = config['salts']['salt1_var']
-salt2_hex = config['salts']['salt2_var']
+# Legacy server-side mode (optional)
+salt1_hex = (config.get('salts', {}) or {}).get('salt1_var', '').strip()
+salt2_hex = (config.get('salts', {}) or {}).get('salt2_var', '').strip()
+LEGACY_SERVER_SIDE_ENABLED = bool(salt1_hex and salt2_hex)
 
-# Validate and convert salts
-try:
-    SALT1 = bytes.fromhex(salt1_hex)
-    SALT2 = bytes.fromhex(salt2_hex)
-    if len(SALT1) != 16 or len(SALT2) != 16:
-        raise ValueError("Salts must decode to 16 bytes")
-except ValueError as e:
-    raise ValueError("Invalid salt format") from e
+SALT1 = None
+SALT2 = None
+if LEGACY_SERVER_SIDE_ENABLED:
+    try:
+        SALT1 = bytes.fromhex(salt1_hex)
+        SALT2 = bytes.fromhex(salt2_hex)
+        if len(SALT1) != 16 or len(SALT2) != 16:
+            raise ValueError("Salts must decode to 16 bytes")
+    except ValueError as e:
+        raise ValueError("Invalid salt format") from e
 
 # Database setup
 def get_db():
@@ -61,6 +124,8 @@ def generate_id():
 # Argon2 configuration
 def derive_key(id_bytes, salt):
     """Derive cryptographic key using Argon2 with config parameters"""
+    if not LEGACY_SERVER_SIDE_ENABLED:
+        raise RuntimeError("Legacy server-side mode is disabled (set TNYR_SALT1_HEX and TNYR_SALT2_HEX to enable)")
     return hash_secret_raw(
         secret=id_bytes,
         salt=salt,
@@ -184,26 +249,27 @@ def delete_url():
     updated = False
     
     with get_db() as conn:
-        # Try to update old server-side encrypted URLs table
-        id_bytes = link_id.encode()
-        lookup_hash_old = derive_key(id_bytes, SALT1).hex()
-        
-        # Check if it exists in old table
-        cur = conn.execute(
-            "SELECT 1 FROM urls WHERE lookup_hash = ?",
-            (lookup_hash_old,)
-        )
-        if cur.fetchone():
-            # Re-encrypt the abuse marker using server-side method
-            encryption_key = derive_key(id_bytes, SALT2)
-            iv, encrypted_warning = encrypt_url(encryption_key, ABUSE_WARNING_MARKER)
+        # Try to update old server-side encrypted URLs table (legacy mode)
+        if LEGACY_SERVER_SIDE_ENABLED:
+            id_bytes = link_id.encode()
+            lookup_hash_old = derive_key(id_bytes, SALT1).hex()
             
-            conn.execute(
-                "UPDATE urls SET iv = ?, encrypted_url = ? WHERE lookup_hash = ?",
-                (iv, encrypted_warning, lookup_hash_old)
+            # Check if it exists in old table
+            cur = conn.execute(
+                "SELECT 1 FROM urls WHERE lookup_hash = ?",
+                (lookup_hash_old,)
             )
-            conn.commit()
-            updated = True
+            if cur.fetchone():
+                # Re-encrypt the abuse marker using server-side method
+                encryption_key = derive_key(id_bytes, SALT2)
+                iv, encrypted_warning = encrypt_url(encryption_key, ABUSE_WARNING_MARKER)
+                
+                conn.execute(
+                    "UPDATE urls SET iv = ?, encrypted_url = ? WHERE lookup_hash = ?",
+                    (iv, encrypted_warning, lookup_hash_old)
+                )
+                conn.commit()
+                updated = True
         
         # If not found, try to update new client-side encrypted URLs table
         if not updated:
@@ -235,50 +301,11 @@ def delete_url():
 
 @app.route('/shorten-server', methods=['POST'])
 def shorten_url_server():
-    data = request.get_json()
-
-    if not data or 'url' not in data:
-        return jsonify({"error": "Missing URL"}), 400
-    
-    id = None
-    url = data['url']
-
-    if not (url.startswith('https://') or url.startswith('http://') or url.startswith('magnet:')):
-        url = 'http://' + url
-
-    with get_db() as conn:
-        # Generate unique ID and hash
-        for _ in range(100):  # Retry limit
-            id = generate_id()
-            id_bytes = id.encode()
-            
-            # Derive lookup hash
-            lookup_hash = derive_key(id_bytes, SALT1).hex()
-            
-            # Check for collision
-            cur = conn.execute(
-                "SELECT 1 FROM urls WHERE lookup_hash = ?",
-                (lookup_hash,)
-            )
-            if not cur.fetchone():
-                break
-        else:
-            return jsonify({"error": "Failed to generate unique ID"}), 500
-        
-        # Derive encryption key
-        encryption_key = derive_key(id_bytes, SALT2)
-        
-        # Encrypt URL
-        iv, encrypted_url = encrypt_url(encryption_key, url)
-        
-        # Store in database
-        conn.execute(
-            "INSERT INTO urls (lookup_hash, iv, encrypted_url) VALUES (?, ?, ?)",
-            (lookup_hash, iv, encrypted_url)
-        )
-        conn.commit()
-    
-    return jsonify({"id": id}), 201
+    # Legacy shortening is intentionally disabled.
+    # Old /<id> links can still be resolved if legacy salts are configured.
+    return jsonify({
+        "error": "Legacy shortening is disabled. Use the default client-side mode."
+    }), 410
 
 @app.route('/shorten', methods=['POST'])
 def shorten_url_client():
@@ -339,6 +366,8 @@ def get_encrypted_url():
 
 @app.route('/<id>') # Still needed for old links
 def redirect_url(id):
+    if not LEGACY_SERVER_SIDE_ENABLED:
+        return jsonify({"error": "Link not found"}), 404
     id_bytes = id.encode()
     
     # Derive lookup hash
@@ -367,7 +396,8 @@ def redirect_url(id):
     # Check if this is an abuse warning
     if url == ABUSE_WARNING_MARKER:
         # Redirect to home page with abuse warning hash
-        domain = config.get('domain', {}).get('name', 'tnyr.me')
+        domain = (config.get("domain", {}) or {}).get("name", "") or request.host.split(":")[0] or "tnyr.me"
+        domain = domain.strip()
         abuse_html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -524,4 +554,5 @@ if __name__ == '__main__':
         return response
 
     init_db()
-    app.run(host='0.0.0.0', port=5000)
+    port = int(os.getenv("TNYR_PORT", "5502"))
+    app.run(host='0.0.0.0', port=port)

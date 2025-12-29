@@ -31,14 +31,53 @@ type UrlFormData = z.infer<typeof urlSchema>;
 
 // Configuration constants
 const ALLOWED_CHARS = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ123456789+*-';
-const DOMAIN = import.meta.env.VITE_DOMAIN || 'tnyr.me';
-const getDefaultApiBaseUrl = () => {
+const getConfiguredDomain = () => {
+  if (typeof window === 'undefined') return '';
+  const v = (window as any).__TNYR_DOMAIN__;
+  if (typeof v === 'string' && v && v !== '%VITE_DOMAIN%') return v;
+  return '';
+};
+
+const getConfiguredPublicUrl = () => {
+  if (typeof window === 'undefined') return '';
+  const v = (window as any).__TNYR_PUBLIC_URL__;
+  if (typeof v === 'string' && v && v !== '%VITE_PUBLIC_URL%') return v.replace(/\/+$/, '');
+  return '';
+};
+
+const getHostnameFromHost = (host: string) => {
+  try {
+    return new URL(`http://${host}`).hostname;
+  } catch {
+    return host.split(':')[0] || host;
+  }
+};
+
+const getSiteHost = () => {
+  const configured = getConfiguredDomain();
+  if (configured) return configured;
+  if (typeof window !== 'undefined' && window.location && window.location.host) {
+    return window.location.host; // includes port (useful for localhost)
+  }
+  return 'tnyr.me';
+};
+
+const getSiteHostname = () => {
+  const host = getSiteHost();
+  return getHostnameFromHost(host);
+};
+
+const getApiBaseUrl = () => {
   if (typeof window !== 'undefined' && window.location && window.location.origin) {
     return window.location.origin;
   }
-  return `https://${DOMAIN}`;
+  return 'https://tnyr.me';
 };
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || getDefaultApiBaseUrl();
+
+const SITE_HOST = getSiteHost();
+const SITE_HOSTNAME = getSiteHostname();
+const API_BASE_URL = getApiBaseUrl();
+const PUBLIC_URL = getConfiguredPublicUrl();
 // Shared salt for lookup hash (protects against rainbow tables)
 const LOOKUP_SALT = new Uint8Array([0x74, 0x6e, 0x79, 0x72, 0x2e, 0x6d, 0x65, 0x5f, 0x6c, 0x6f, 0x6f, 0x6b, 0x75, 0x70, 0x5f, 0x73]); // "tnyr.me_lookup_s"
 
@@ -79,39 +118,45 @@ const deriveEncryptionKey = (id: string, salt: Uint8Array) => {
 
 const encryptUrl = async (key: Uint8Array, plaintext: string) => {
   const iv = generateRandomBytes(16);
+  const keyBytes = new Uint8Array(Array.from(key));
+  const ivBytes = new Uint8Array(Array.from(iv));
   const encoder = new TextEncoder();
   const data = encoder.encode(plaintext);
+  const dataBytes = new Uint8Array(Array.from(data));
   
   const cryptoKey = await crypto.subtle.importKey(
     'raw',
-    key,
+    keyBytes,
     { name: 'AES-CBC' },
     false,
     ['encrypt']
   );
   
   const encrypted = await crypto.subtle.encrypt(
-    { name: 'AES-CBC', iv: iv },
+    { name: 'AES-CBC', iv: ivBytes },
     cryptoKey,
-    data
+    dataBytes
   );
   
-  return { iv, encrypted: new Uint8Array(encrypted) };
+  return { iv: ivBytes, encrypted: new Uint8Array(encrypted) };
 };
 
 const decryptUrl = async (key: Uint8Array, iv: Uint8Array, ciphertext: Uint8Array) => {
+  const keyBytes = new Uint8Array(Array.from(key));
+  const ivBytes = new Uint8Array(Array.from(iv));
+  const ciphertextBytes = new Uint8Array(Array.from(ciphertext));
   const cryptoKey = await crypto.subtle.importKey(
     'raw',
-    key,
+    keyBytes,
     { name: 'AES-CBC' },
     false,
     ['decrypt']
   );
   
   const decrypted = await crypto.subtle.decrypt(
-    { name: 'AES-CBC', iv: iv },
+    { name: 'AES-CBC', iv: ivBytes },
     cryptoKey,
-    ciphertext
+    ciphertextBytes
   );
   
   const decoder = new TextDecoder();
@@ -230,8 +275,7 @@ export default function App() {
         ENCRYPTED_URL: arrayToHex(encrypted)
       });
       
-      const protocol = typeof window !== 'undefined' && window.location ? window.location.protocol : 'https:';
-      const shortUrl = `${protocol}//${DOMAIN}/#${linkId}`;
+      const shortUrl = PUBLIC_URL ? `${PUBLIC_URL}/#${linkId}` : `https://${SITE_HOST}/#${linkId}`;
       setShortened(shortUrl);
     } catch (error) {
       console.error('Encryption error:', error);
@@ -247,7 +291,7 @@ export default function App() {
 
   // Show abuse warning if detected
   if (showAbuseWarning) {
-    return <AbuseWarning domain={DOMAIN} />;
+    return <AbuseWarning domain={SITE_HOSTNAME} />;
   }
 
   // Decryption loading screen
@@ -415,7 +459,7 @@ export default function App() {
           <div className="mt-6 p-4 bg-slate-700/30 rounded-lg border border-slate-700/50">
             <p className="text-sm text-slate-400">
               🔒 <span className="font-medium">Important:</span> Make sure to
-              Bookmark your {DOMAIN} links safely - there's no way to recover
+              Bookmark your {SITE_HOST} links safely - there's no way to recover
               lost IDs or access links without them.
             </p>
           </div>
@@ -444,10 +488,10 @@ export default function App() {
         <div className="text-xs text-slate-500 text-center">
           Report abuse:{" "}
           <a
-            href={`mailto:abuse@${DOMAIN}`}
+            href={`mailto:abuse@${SITE_HOSTNAME}`}
             className="hover:text-slate-400 transition-colors underline"
           >
-            abuse@{DOMAIN}
+            abuse@{SITE_HOSTNAME}
           </a>
         </div>
       </footer>
