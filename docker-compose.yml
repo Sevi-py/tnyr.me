@@ -5,7 +5,7 @@ services:
       - "5502:5502"
     environment:
       # Required (https://example.com or http://1.2.3.4:5502)
-      - TNYR_PUBLIC_URL=${TNYR_PUBLIC_URL:?set TNYR_PUBLIC_URL (https://example.com or http://1.2.3.4:5502)}
+      - "TNYR_PUBLIC_URL=${TNYR_PUBLIC_URL:?set TNYR_PUBLIC_URL (https://example.com or http://1.2.3.4:5502)}"
       # Persistence
       - TNYR_DB_PATH=/data/urls.db
       - TNYR_PORT=5502

@@ -36,7 +36,7 @@ A secure, self-hosted URL shortener with custom passwordless encryption. Perfect
 #### Prerequisites
 - Docker (and optionally Docker Compose)
 
-#### 1) Generate salts (optional; only if you hosted tnyr.me before **Dec 30, 2025**)
+#### 1) Generate salts (only if you hosted tnyr.me before **Dec 30, 2025**)
 
 ```bash
 python3 backend/generate_salts.py --env
