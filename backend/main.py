@@ -3,6 +3,7 @@ import sqlite3
 import secrets
 from flask import Flask, request, jsonify, redirect
 from contextlib import closing
+from urllib.parse import urlparse
 from argon2.low_level import hash_secret_raw, Type
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import padding
@@ -24,6 +25,21 @@ def _default_db_path() -> str:
         return "/data/urls.db"
     return "urls.db"
 
+def _parse_redirect_hosts(raw: str) -> set[str]:
+    hosts = set()
+    for item in raw.replace(",", " ").split():
+        value = item.strip().lower()
+        if not value:
+            continue
+        if "://" in value:
+            parsed = urlparse(value)
+            value = parsed.netloc or parsed.path
+        hosts.add(value.rstrip("/"))
+    return hosts
+
+def _hostname_from_host(host: str) -> str:
+    return (urlparse(f"//{host}").hostname or host).strip().lower()
+
 def _load_config_from_env() -> dict:
     salt1_hex = os.getenv("TNYR_SALT1_HEX", "").strip()
     salt2_hex = os.getenv("TNYR_SALT2_HEX", "").strip()
@@ -36,7 +52,6 @@ def _load_config_from_env() -> dict:
     if not public_url:
         raise RuntimeError("Missing required environment variable: TNYR_PUBLIC_URL (https://example.com or http://1.2.3.4:5502)")
     try:
-        from urllib.parse import urlparse
         parsed = urlparse(public_url)
         if parsed.scheme not in ("http", "https") or not parsed.netloc:
             raise ValueError("Invalid TNYR_PUBLIC_URL")
@@ -70,6 +85,8 @@ def _load_config_from_env() -> dict:
             # Not required for core functionality; used only in the abuse page and SEO files
             "name": domain,
             "api_base_url": os.getenv("TNYR_API_BASE_URL", "").strip() or normalized_public_url,
+            "public_url": normalized_public_url,
+            "redirect_hosts": _parse_redirect_hosts(os.getenv("TNYR_REDIRECT_HOSTS", "")),
         },
         "deletion_token": os.getenv("TNYR_DELETION_TOKEN", "").strip(),
     }
@@ -83,6 +100,31 @@ def _load_config_from_env() -> dict:
 config = _load_config_from_env()
 
 app = Flask(__name__, static_folder='dist', static_url_path='/static')
+
+@app.before_request
+def redirect_configured_hosts_to_public_url():
+    domain_config = config.get("domain", {}) or {}
+    redirect_hosts = domain_config.get("redirect_hosts", set()) or set()
+    request_host = (request.host or "").strip().lower()
+    request_hostname = _hostname_from_host(request_host)
+
+    if request_host not in redirect_hosts and request_hostname not in redirect_hosts:
+        return None
+
+    public_url = domain_config.get("public_url", "").strip().rstrip("/")
+    if not public_url:
+        return None
+
+    public_host = (urlparse(public_url).netloc or "").lower()
+    public_hostname = _hostname_from_host(public_host)
+    if request_host == public_host or request_hostname == public_hostname:
+        return None
+
+    target = f"{public_url}{request.path or '/'}"
+    if request.query_string:
+        target = f"{target}?{request.query_string.decode('utf-8', errors='ignore')}"
+
+    return redirect(target, code=308)
 
 # Legacy server-side mode (optional)
 salt1_hex = (config.get('salts', {}) or {}).get('salt1_var', '').strip()

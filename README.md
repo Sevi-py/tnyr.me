@@ -55,6 +55,7 @@ Required env vars:
 
 Optional env vars:
 - `TNYR_DB_PATH` (defaults to `/data/urls.db` in the container via compose)
+- `TNYR_REDIRECT_HOSTS` (optional comma/space-separated hosts that should redirect to `TNYR_PUBLIC_URL`; for example, set `TNYR_PUBLIC_URL=https://tnyr.me` and `TNYR_REDIRECT_HOSTS=www.tnyr.me` in Coolify)
 - `TNYR_DELETION_TOKEN` (set to enable `POST /delete-url`)
 - **Legacy link support (only if you hosted tnyr.me before Dec 30, 2025)**:
   - `TNYR_SALT1_HEX` (16 bytes = 32 hex chars)

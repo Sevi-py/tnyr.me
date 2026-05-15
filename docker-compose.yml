@@ -9,6 +9,8 @@ services:
       # Persistence
       - TNYR_DB_PATH=/data/urls.db
       - TNYR_PORT=5502
+      # Optional: comma/space-separated hosts that should redirect to TNYR_PUBLIC_URL
+      - TNYR_REDIRECT_HOSTS=${TNYR_REDIRECT_HOSTS:-}
       # Optional (enables /delete-url)
       - TNYR_DELETION_TOKEN=${TNYR_DELETION_TOKEN:-}
       # Optional: legacy server-side mode (/shorten-server + old /<id>)
@@ -22,5 +24,4 @@ services:
     volumes:
       - ./data:/data
     restart: unless-stopped
-
 
